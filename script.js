@@ -1,35 +1,52 @@
 const fileInput = document.getElementById('fileInput');
 const fileInfo = document.getElementById('fileInfo');
 const preview = document.getElementById('preview');
+const progressBar = document.getElementById('progressBar');
+const allowedTypes = ['image/jpeg', 'image/png', 'image/gif','application/pdf'];
+const maxFileSize = 30 * 1024 * 1024; // 30 MB in bytes
 
 fileInput.addEventListener('change', function(event) {
+
   const selectedFile = event.target.files[0];
-  
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-  const maxSize = 5 * 1024 * 1024; // 5 MB in bytes
-
-  const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
-
-  if (allowedExtensions.includes(fileExtension) && selectedFile.size <= maxSize) {
-    fileInfo.innerHTML = `
-      Nombre del archivo: ${selectedFile.name}<br>
-      Tipo MIME: ${selectedFile.type}<br>
-      Tamaño: ${selectedFile.size} bytes
-    `;
-
-    if (selectedFile.type.startsWith('image/')) {
-      preview.style.display = 'block';
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        preview.src = e.target.result;
-      };
-      reader.readAsDataURL(selectedFile);
-    } else {
-      preview.style.display = 'none';
-    }
-  } else {
-    fileInfo.innerHTML = 'Archivo no válido. Por favor, selecciona un archivo .jpg, .png o .gif de hasta 5 MB.';
+  if (!selectedFile) {
+    fileInfo.innerHTML = 'Ningún archivo seleccionado.';
     preview.style.display = 'none';
-    fileInput.value = ''; // Clear the input
+    progressBar.style.display = 'none';
+    return;
   }
+  if (!allowedTypes.includes(selectedFile.type)) {
+    fileInfo.innerHTML = 'Tipo de archivo no admitido. Por favor, elige un archivo .jpg, .png o .gif.';
+    preview.style.display = 'none';
+    progressBar.style.display = 'none';
+    return;
+  }
+  if (selectedFile.size > maxFileSize) {
+    fileInfo.innerHTML = 'El tamaño del archivo excede el límite de 5 MB.';
+    preview.style.display = 'none';
+    progressBar.style.display = 'none';
+    return;
+  }
+  fileInfo.innerHTML = `
+    Nombre del archivo: ${selectedFile.name}<br>
+    Tipo MIME: ${selectedFile.type}<br>
+    Tamaño: ${selectedFile.size} bytes
+  `;
+  preview.style.display = 'block';
+  progressBar.style.display = 'block';
+  const formData = new FormData();
+
+  formData.append('file', selectedFile);
+  axios.post('http://localhost:3000/upload', formData, {
+    onUploadProgress: function(progressEvent) {
+      const progressPercentage = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+      progressBar.value = progressPercentage;
+
+    }
+  })
+  .then(response => {
+    console.log('Archivo subido con éxito:', response.data);
+  })
+  .catch(error => {
+    console.error('Error al subir el archivo:', error);
+  });
 });
